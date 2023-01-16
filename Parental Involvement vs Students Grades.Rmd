@@ -1,0 +1,138 @@
+---
+title: "Parental Involvement Effect on Students Grades"
+author: "Declan McMahon"
+date: "2022-12-05"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+#libraries and packages
+library(tidyverse)
+library(labelled)
+library(gtsummary)
+```
+
+```{r}
+#reading the data and selecting the variables that will be used
+data1 <- read.csv("data.csv")
+
+data1 <- data1 %>%
+  select(SEGRADES,RACEETH,INTACC,ZIPLOCL,TTLHHINC,PARGRADEX)
+
+summary(data1)
+```
+
+```{r}
+#removing the negative 1 from columns
+data1[data1== -1] <- NA
+```
+
+```{r}
+data1 <- data1 %>%
+  mutate(across(
+    .cols= !c(TTLHHINC),as.factor
+  ))%>% drop_na()
+
+summary(data1)
+```
+
+```{r}
+data1 <- data1 %>%
+  mutate(avg_grade = fct_collapse(SEGRADES,
+                  A=c("1"),
+                  B = c("2"),
+                  C =c("3"),
+                  D = ("4"),
+                  None =c("5")),
+  
+         ZipCode = fct_collapse(ZIPLOCL, 
+                                City = c("11", "12", "13"),
+                                Suburb = c("21", "22", "23"),
+                                Town= c("31", "32", "33"),
+                                Rural = c("41", "42", "43")))
+
+```
+
+```{r}
+data1 <- data1 %>% select(-SEGRADES, -ZIPLOCL)
+``` 
+
+```{r}
+Race_Labels <- c(
+  "White" = "1",
+  "Black" = "2",
+  "Hispanic" = "3",
+  "Asian / Pacific" = "4",
+  "Other" = "5"
+)
+
+Internet_Labels <- c(
+  "Home + Cell Phone" = "1",
+  "Home" = "2",
+  "Cell Phone" = "3",
+  "None" = "4"
+  )
+Parental_Education <- c(
+  "< High School" = "1",
+  "High School" = "2",
+  "Technical after High School" = "3",
+  "College" = "4",
+  "Graduate School" = "5"
+)
+
+
+data1 <- data1 %>%
+  mutate(
+    RACE = fct_recode(RACEETH, !!! Race_Labels),
+    Internet = fct_recode(INTACC, !!! Internet_Labels),
+    Parental_Ed = fct_recode(PARGRADEX, !!! Parental_Education)
+  )
+
+```
+
+
+```{r}
+data1 <- data1 %>% select(-RACEETH, -INTACC, -PARGRADEX)
+data1
+
+names(data1)[names(data1) == "TTLHHINC"] <- "Income"
+data1
+```
+
+```{r}
+table_1 <- data1 %>%
+  tbl_summary(by=avg_grade)
+table_1
+```
+
+```{r}
+plot1 <- ggplot(data1, aes(x=Parental_Ed, fill=avg_grade))+ geom_bar(color="black",width = 0.5, position = "fill") + scale_fill_brewer(palette="RdPu") + theme_minimal() + geom_text(aes(label = scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..])),position = position_fill(vjust = 0.5), stat = "count",size=2.5) + coord_flip() + ggtitle("Average Grade by Parental Education")
+plot1
+```
+
+```{r}
+plot_2 <- ggplot(data1, aes(x=Income, y=avg_grade, fill=avg_grade)) +  geom_boxplot() + theme_minimal() + scale_fill_brewer(palette = "Set2") + ggtitle("Income by Average Grade")
+plot_2
+```
+
+```{r}
+table_2 <- table(data1$RACE, data1$ZipCode)
+table_2
+
+
+```
+
+```{r}
+model <- glm(avg_grade~ RACE + Income + ZipCode + Parental_Ed + Internet, data=data1, family=binomial(link="logit"))
+summary(model)
+```
+
+```{r}
+eval <- step(model, type = 'backward')
+```
+
