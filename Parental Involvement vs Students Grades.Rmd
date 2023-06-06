@@ -1,6 +1,6 @@
 ---
 title: "Parental Involvement Effect on Students Grades"
-author: "Declan McMahon"
+author: "Declan McMahon & Lana Alrefai"
 date: "2022-12-05"
 output: pdf_document
 ---
